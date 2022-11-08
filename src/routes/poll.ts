@@ -1,0 +1,51 @@
+import { FastifyInstance } from 'fastify';
+import ShortUniqueId from 'short-unique-id';
+import { z } from 'zod';
+import { prisma } from '../lib/prisma';
+
+export async function poolRoutes(fastify: FastifyInstance) {
+
+    fastify.get('/polls/count', async () => {
+        const count = await prisma.poll.count()
+        return { count }
+    })
+
+    fastify.post('/polls', async (request, reply) => {
+        const createPollBody = z.object({
+            title: z.string(),
+        });
+
+        try {
+            const { title } = createPollBody.parse(request.body);
+            const generate = new ShortUniqueId({ length: 6 });
+            const code = String(generate()).toUpperCase();
+
+            await prisma.poll.create({
+                data: {
+                    title,
+                    code
+                }
+            })
+
+            return reply.status(201).send({ code });
+
+        } catch (error) {
+            return reply.status(500).send({ error });
+        }
+
+    })
+
+    fastify.get('/polls', async () => {
+        const polls = await prisma.poll.findMany({
+            // where: {
+            //     code: {
+            //         startsWith: 'D'
+            //     }
+            // }
+        })
+
+        return { polls }
+    })
+
+}
+
